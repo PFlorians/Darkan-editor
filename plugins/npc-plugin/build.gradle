@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+}
+
+group = 'scape-editor.plugins'
+version = '1.0.0'
+
+dependencies {
+    implementation(project(':plugin'))
+    implementation(project(":fs"))
+    implementation(project(":gui"))
+    implementation(project(":io"))
+    implementation(project(':shared'))
+}
+
+tasks.jar {
+    destinationDirectory = rootProject.layout.projectDirectory.dir("plugins-runtime")
+}

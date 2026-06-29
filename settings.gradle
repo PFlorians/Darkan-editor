@@ -1,0 +1,17 @@
+rootProject.name = 'scape-editor'
+
+include ':fs'
+include ':gui'
+include ':io'
+include ':util'
+include ':plugin'
+include ':shared'
+//include ':npc-plugin'
+
+project(':fs').projectDir = "$rootDir/fs" as File
+project(':gui').projectDir = "$rootDir/gui" as File
+project(':io').projectDir = "$rootDir/io" as File
+project(':util').projectDir = "$rootDir/util" as File
+project(':plugin').projectDir = "$rootDir/plugin" as File
+project(':shared').projectDir = "$rootDir/shared" as File
+//project(':npc-plugin').projectDir = "$rootDir/plugins/npc-plugin" as File

@@ -1,0 +1,54 @@
+plugins {
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+dependencies {
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'commons-lang:commons-lang:2.6'
+    implementation 'org.imgscalr:imgscalr-lib:4.2'
+    implementation 'com.google.guava:guava:33.2.1-jre'
+
+    implementation(project(":io"))
+    implementation(project(":fs"))
+    implementation(project(":util"))
+    implementation(project(":plugin"))
+    implementation(project(":shared"))
+
+//    runtimeOnly "org.openjfx:javafx-graphics:${javafx.version}:win"
+//    runtimeOnly "org.openjfx:javafx-graphics:${javafx.version}:linux"
+//    runtimeOnly "org.openjfx:javafx-graphics:${javafx.version}:mac"
+}
+
+javafx {
+    version = '21'
+    modules = [
+            'javafx.controls',
+            'javafx.fxml',
+            'javafx.swing'
+    ]
+}
+
+//mainClassName = 'scape.editor.gui.Launcher'
+application {
+    mainClass = 'scape.editor.gui.Launcher'
+}
+description = 'Scape Editor User-Interface'
+
+defaultTasks 'run'
+
+//
+//tasks.jar {
+//    archiveFileName = 'scape-editor.jar'
+//    manifest {
+//        attributes(
+//            'Main-Class': mainClassName
+//        )
+//    }
+//
+//    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+//
+////    from {
+////        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+////    }
+//}
