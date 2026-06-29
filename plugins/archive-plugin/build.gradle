@@ -1,0 +1,25 @@
+plugins {
+    id 'java'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+group = 'scape-editor.plugins'
+version = '1.0.0'
+
+javafx {
+    version = '21'
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+
+dependencies {
+    implementation(project(':plugin'))
+    implementation(project(":fs"))
+    implementation(project(":gui"))
+    implementation(project(":io"))
+    implementation(project(':shared'))
+    implementation(project(':util'))
+}
+
+tasks.jar {
+    destinationDirectory = rootProject.layout.projectDirectory.dir("plugins-runtime")
+}
