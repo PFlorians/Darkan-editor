@@ -57,9 +57,9 @@ class PluginController : BaseController() {
                 return@setPredicate true
             }
 
-            val lowercase = newValue.toLowerCase()
+            val lowercase = newValue.lowercase()
 
-            if (it.meta.name.toLowerCase().contains(lowercase)) {
+            if (it.meta.name.lowercase().contains(lowercase)) {
                 return@setPredicate true
             }
 

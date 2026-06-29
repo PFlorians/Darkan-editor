@@ -1,5 +1,5 @@
 plugins {
-  id 'org.jetbrains.kotlin.jvm' version '2.0.21' apply false
+  id 'org.jetbrains.kotlin.jvm' version '2.4.0' apply false
 }
 
 allprojects {
@@ -20,14 +20,13 @@ subprojects {
   apply plugin: 'java'
   apply plugin: 'org.jetbrains.kotlin.jvm'
 
-  dependencies {
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib'
-//
-//    testImplementation "junit:junit:4.13.2"
-//    testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
+  java {
+    toolchain {
+      languageVersion = JavaLanguageVersion.of(21)
+    }
   }
 
-//  test {
-//    useJUnit()
-//  }
+  dependencies {
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib'
+  }
 }
