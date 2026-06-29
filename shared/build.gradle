@@ -4,8 +4,10 @@ plugins {
 description = 'Shared objects'
 group = 'scape-editor'
 version = '3.1.0'
-dependencies {
-    runtimeOnly "org.openjfx:javafx-graphics:$javafx.version:linux"
+
+javafx {
+    version = '21'
+    modules = ['javafx.base']
 }
 
 sourceSets {

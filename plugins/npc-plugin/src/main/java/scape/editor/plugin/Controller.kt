@@ -74,9 +74,9 @@ class Controller : BaseController() {
                 return@setPredicate true
             }
 
-            val lowercase = newValue.toLowerCase()
+            val lowercase = newValue.lowercase()
 
-            if (it.name.toLowerCase().contains(lowercase) || it.id.toString() == lowercase) {
+            if (it.name.lowercase().contains(lowercase) || it.id.toString() == lowercase) {
                 return@setPredicate true
             }
 
@@ -98,9 +98,9 @@ class Controller : BaseController() {
                 return@setPredicate true
             }
 
-            val lowercase = newValue.toLowerCase()
+            val lowercase = newValue.lowercase()
 
-            if (it.name.toLowerCase().contains(lowercase)) {
+            if (it.name.lowercase().contains(lowercase)) {
                 return@setPredicate true
             }
 
