@@ -1,5 +1,5 @@
 
-description = 'Scape Editor RS2 File System'
+description = 'Darkan Editor RS2 File System'
 
 dependencies {
   implementation(project(":io"))

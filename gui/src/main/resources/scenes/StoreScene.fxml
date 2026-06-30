@@ -15,7 +15,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
-<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" onMouseClicked="#onMouseClicked" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="475.0" prefWidth="800.0" styleClass="cod-gray" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="scape.editor.gui.controller.MainController">
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" onMouseClicked="#onMouseClicked" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="475.0" prefWidth="800.0" styleClass="cod-gray" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="darkan.editor.gui.controller.MainController">
    <top>
       <VBox BorderPane.alignment="CENTER">
          <children>
@@ -23,7 +23,7 @@
                <children>
                   <HBox alignment="CENTER">
                      <children>
-                        <Text fx:id="title" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="white" text="Scape Editor" />
+                        <Text fx:id="title" strokeType="OUTSIDE" strokeWidth="0.0" styleClass="white" text="Darkan Editor" />
                      </children>
                   </HBox>
                   <HBox alignment="CENTER">

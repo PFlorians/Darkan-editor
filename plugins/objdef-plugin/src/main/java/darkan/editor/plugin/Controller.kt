@@ -1,0 +1,162 @@
+package darkan.editor.plugin
+
+import java.net.URL
+import java.util.*
+import javafx.collections.FXCollections
+import javafx.collections.transformation.FilteredList
+import javafx.collections.transformation.SortedList
+import javafx.fxml.FXML
+import javafx.scene.control.TableColumn
+import javafx.scene.control.TableView
+import javafx.scene.control.TextField
+import darkan.editor.fs.RSArchive
+import darkan.editor.fx.TupleCellFactory
+import darkan.editor.gui.App
+import darkan.editor.gui.controller.BaseController
+import darkan.editor.gui.event.LoadCacheEvent
+import darkan.editor.gui.model.NamedValueModel
+import darkan.editor.gui.model.ValueModel
+import darkan.editor.gui.util.FXDialogUtil
+import darkan.editor.plugin.extension.ConfigExtension
+import darkan.editor.shared.model.KeyModel
+
+class Controller : BaseController() {
+
+    @FXML
+    lateinit var indexTable: TableView<KeyModel>
+
+    @FXML
+    lateinit var indexIdCol: TableColumn<KeyModel, Int>
+
+    @FXML
+    lateinit var indexNameCol: TableColumn<KeyModel, String>
+
+    @FXML
+    lateinit var dataTable: TableView<NamedValueModel>
+
+    @FXML
+    lateinit var dataNameCol: TableColumn<NamedValueModel, String>
+
+    @FXML
+    lateinit var dataValueCol: TableColumn<NamedValueModel, ValueModel>
+
+    val indexes = FXCollections.observableArrayList<KeyModel>()
+
+    val data = FXCollections.observableArrayList<NamedValueModel>()
+
+    @FXML
+    lateinit var keyTf: TextField
+
+    @FXML
+    lateinit var valueTf: TextField
+
+    override fun initialize(location: URL?, resources: ResourceBundle?) {
+        indexIdCol.setCellValueFactory { it.value.idProperty.asObject() }
+        indexNameCol.setCellValueFactory { it.value.nameProperty }
+
+        indexTable.selectionModel.selectedItemProperty().addListener { _, _, newValue ->
+
+            if (newValue == null || newValue.id < 0) {
+                return@addListener
+            }
+
+            data.clear()
+
+            for (set in newValue.map) {
+                data.add(NamedValueModel(set.key, ValueModel(newValue, set.key, set.value)))
+            }
+
+        }
+
+        val filteredKeyList = FilteredList(indexes) { true }
+        keyTf.textProperty().addListener { _, _, newValue ->
+            filteredKeyList.setPredicate {
+                if (newValue == null || newValue.isEmpty()) {
+                    return@setPredicate true
+                }
+
+                val lowercase = newValue.lowercase()
+
+                if (it.name.lowercase().contains(lowercase) || it.id.toString() == lowercase) {
+                    return@setPredicate true
+                }
+
+                return@setPredicate false
+            }
+        }
+
+        val sortedKeyList = SortedList(filteredKeyList)
+        sortedKeyList.comparatorProperty().bind(indexTable.comparatorProperty())
+        indexTable.items = sortedKeyList
+
+        dataNameCol.setCellValueFactory { it.value.nameProperty }
+        dataValueCol.setCellValueFactory { it.value.valueProperty }
+        dataValueCol.setCellFactory { TupleCellFactory() }
+
+        val filteredValueList = FilteredList(data) { true }
+        valueTf.textProperty().addListener { _, _, newValue ->
+            filteredValueList.setPredicate {
+                if (newValue == null || newValue.isEmpty()) {
+                    return@setPredicate true
+                }
+
+                val lowercase = newValue.lowercase()
+
+                if (it.name.lowercase().contains(lowercase)) {
+                    return@setPredicate true
+                }
+
+                return@setPredicate false
+            }
+        }
+
+        val sortedValueList = SortedList(filteredValueList)
+        sortedValueList.comparatorProperty().bind(dataTable.comparatorProperty())
+
+        dataTable.items = sortedValueList
+    }
+
+    override fun onPopulate() {
+        data.clear()
+        indexes.clear()
+        PluginManager.post(LoadCacheEvent(App.fs))
+
+        val archive = App.fs.getArchive(RSArchive.CONFIG_ARCHIVE)
+        val plugin = this.currentPlugin
+
+        if (plugin is ConfigExtension) {
+            try {
+                plugin.onLoad(indexes, archive)
+            } catch (ex: java.lang.Exception) {
+                ex.printStackTrace()
+                FXDialogUtil.showException(ex)
+            }
+        }
+    }
+
+    override fun onClear() {
+        data.clear()
+        indexes.clear()
+    }
+
+    @FXML
+    private fun goBack() {
+        switchScene("StoreScene")
+    }
+
+    @FXML
+    fun onSave() {
+        val archive = App.fs.getArchive(RSArchive.CONFIG_ARCHIVE)
+        val plugin = this.currentPlugin
+
+        if (plugin is ConfigExtension) {
+            try {
+                plugin.onSave(indexes, archive)
+            } catch (ex: Exception) {
+                ex.printStackTrace()
+                FXDialogUtil.showException(ex)
+            }
+        }
+    }
+
+}

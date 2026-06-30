@@ -1,4 +1,4 @@
-description = 'Scape Editor IO'
+description = 'Darkan Editor IO'
 
 sourceSets {
     main.java.srcDirs = ['src/main/kotlin']

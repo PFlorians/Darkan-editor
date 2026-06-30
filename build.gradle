@@ -3,7 +3,7 @@ plugins {
 }
 
 allprojects {
-  group = 'scape-editor'
+  group = 'darkan-editor'
   version = '3.1.0'
 
   repositories {

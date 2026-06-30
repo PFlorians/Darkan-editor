@@ -1,4 +1,4 @@
-rootProject.name = 'scape-editor'
+rootProject.name = 'darkan-editor'
 
 include ':fs'
 include ':gui'
