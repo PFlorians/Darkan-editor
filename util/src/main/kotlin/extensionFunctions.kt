@@ -1,4 +1,4 @@
-package scape.editor.util
+package darkan.editor.util
 
 import java.lang.reflect.Modifier
 

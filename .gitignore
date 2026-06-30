@@ -22,7 +22,7 @@ util/src/main/java/META-INF/MANIFEST.MF
 build/
 dump/
 test/
-
+plugins-runtime/
 cache/
 
 fs/.DS_Store

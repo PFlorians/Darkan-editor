@@ -29,17 +29,21 @@ javafx {
     ]
 }
 
-//mainClassName = 'scape.editor.gui.Launcher'
+//mainClassName = 'darkan.editor.gui.Launcher'
 application {
-    mainClass = 'scape.editor.gui.Launcher'
+    mainClass = 'darkan.editor.gui.Launcher'
 }
-description = 'Scape Editor User-Interface'
+description = 'Darkan Editor User-Interface'
+
+tasks.named('run') {
+    workingDir = rootProject.projectDir
+}
 
 defaultTasks 'run'
 
 //
 //tasks.jar {
-//    archiveFileName = 'scape-editor.jar'
+//    archiveFileName = 'darkan-editor.jar'
 //    manifest {
 //        attributes(
 //            'Main-Class': mainClassName

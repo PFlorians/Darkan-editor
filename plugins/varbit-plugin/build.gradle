@@ -3,7 +3,7 @@ plugins {
     id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
-group = 'scape-editor.plugins'
+group = 'darkan-editor.plugins'
 version = '1.0.0'
 
 javafx {
