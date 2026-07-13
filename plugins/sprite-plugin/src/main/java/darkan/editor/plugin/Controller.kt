@@ -31,6 +31,7 @@ import javax.imageio.ImageIO
 import org.imgscalr.Scalr
 import darkan.editor.fs.RSArchive
 import darkan.editor.fs.RSFileStore
+import darkan.editor.fs.CacheFormat
 import darkan.editor.fs.graphics.RSImageArchive
 import darkan.editor.fs.graphics.RSSprite
 import darkan.editor.gui.App
@@ -339,7 +340,18 @@ class Controller : BaseController() {
         archives.clear()
         sprites.clear()
 
-        val archive = App.fs.getArchive(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.MEDIA_ARCHIVE)
+        val cache = App.cache ?: return
+
+        if (cache.format == CacheFormat.MODERN) {
+            val alert = Alert(Alert.AlertType.INFORMATION)
+            alert.title = "Info"
+            alert.headerText = "Sprite browsing is not yet supported for modern caches."
+            alert.showAndWait()
+            return
+        }
+
+        val data = cache.readFile(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.MEDIA_ARCHIVE) ?: return
+        val archive = RSArchive.decode(data)
 
         val indexHash = HashUtils.hashName("index.dat")
 
@@ -493,8 +505,8 @@ class Controller : BaseController() {
 
         val encoded = archive.encode()
 
-        val store = App.fs.getStore(RSFileStore.ARCHIVE_FILE_STORE)
-        store.writeFile(RSArchive.MEDIA_ARCHIVE, encoded)
+        val cache = App.cache ?: return
+        cache.writeFile(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.MEDIA_ARCHIVE, encoded)
 
         val alert = Alert(Alert.AlertType.INFORMATION)
         alert.title = "Info"

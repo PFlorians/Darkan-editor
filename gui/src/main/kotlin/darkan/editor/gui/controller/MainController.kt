@@ -23,6 +23,7 @@ import java.util.zip.CRC32
 import javafx.scene.control.Alert.AlertType
 import javafx.scene.text.Text
 import javafx.stage.*
+import darkan.editor.fs.LegacyCacheSystem
 import darkan.editor.gui.event.LoadCacheEvent
 import darkan.editor.plugin.PluginManager
 import java.nio.file.Files
@@ -105,24 +106,25 @@ class MainController : BaseController() {
 
             val task = object:Task<Boolean>() {
                 override fun call(): Boolean {
-                    val store = App.fs.getStore(id)
+                    val cache = App.cache ?: return false
+                    val index = cache.getIndex(id) ?: return false
 
-                    val files = store.fileCount
+                    val archiveIds = index.archiveIds
 
-                    if (store == null || files <= 0) {
+                    if (archiveIds.isEmpty()) {
                         storeEntryData.clear()
                         return false
                     }
 
                     storeEntryData.clear()
 
-                    for (i in 0 until files) {
-                        val data = store.readFile(i)
+                    for (archiveId in archiveIds) {
+                        val data = cache.readFile(id, archiveId)
                         val exists = data != null && data.capacity() > 0
-                        val size = if (data == null ) 0 else data.capacity()
+                        val size = data?.capacity() ?: 0
                         val gzipped = if (data == null) false else Settings.isGzip(data.array())
 
-                        var storeEntryName = Settings.getStoreEntryReferenceName(id, i) ?: i.toString()
+                        var storeEntryName = Settings.getStoreEntryReferenceName(id, archiveId) ?: archiveId.toString()
 
                         if (!storeEntryName.endsWith(".gz") && gzipped) {
                             if (storeEntryName.indexOf(".") != -1) {
@@ -131,10 +133,10 @@ class MainController : BaseController() {
                             storeEntryName = storeEntryName.plus(".gz")
                         }
 
-                        val model = StoreEntryModel(i, storeEntryName, size)
+                        val model = StoreEntryModel(archiveId, storeEntryName, size)
 
                         if (exists) {
-                            model.icon = ImageView(Settings.getIcon(data.array()))
+                            model.icon = ImageView(Settings.getIcon(data!!.array()))
                         } else {
                             model.icon = ImageView(Settings.getIcon("file_32.png"))
                         }
@@ -192,7 +194,7 @@ class MainController : BaseController() {
         val selectedStore = storeTable.selectionModel.selectedItem ?: return
         val selectedIndex = storeTable.selectionModel.selectedIndex
 
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
@@ -213,11 +215,14 @@ class MainController : BaseController() {
 
         val task = object:Task<Boolean>() {
             override fun call(): Boolean {
-                val path = App.fs.root
-                App.fs.reset()
-                Files.deleteIfExists(path.resolve("main_file_cache.idx${selectedStore.id}"))
-                App.fs.load()
-                App.fs.defragment()
+                val c = App.cache
+                if (c is LegacyCacheSystem) {
+                    val path = c.root
+                    c.fileSystem.reset()
+                    Files.deleteIfExists(path.resolve("main_file_cache.idx${selectedStore.id}"))
+                    c.fileSystem.load()
+                    c.fileSystem.defragment()
+                }
 
                 Platform.runLater {
                     storeData.removeAt(selectedIndex)
@@ -264,7 +269,10 @@ class MainController : BaseController() {
 
         val task = object:Task<Boolean>() {
             override fun call(): Boolean {
-                App.fs.createStore(nextId)
+                val c = App.cache
+                if (c is LegacyCacheSystem) {
+                    c.fileSystem.createStore(nextId)
+                }
 
                 Platform.runLater {
                     storeData.add(StoreModel(nextId, result))
@@ -280,7 +288,7 @@ class MainController : BaseController() {
 
     @FXML
     private fun importStoreEntries() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
@@ -294,8 +302,7 @@ class MainController : BaseController() {
 
         val task = object:Task<Boolean>() {
             override fun call(): Boolean {
-
-                val store = App.fs.getStore(selectedStore.id) ?: return false
+                val cache = App.cache ?: return false
 
                 for (i in 0 until files.size) {
                     val file = files[i] ?: continue
@@ -320,7 +327,7 @@ class MainController : BaseController() {
                         continue
                     }
 
-                    store.writeFile(id, data)
+                    cache.writeFile(selectedStore.id, id, data)
 
                     var name = file.name
 
@@ -363,7 +370,7 @@ class MainController : BaseController() {
 
     @FXML
     private fun exportStoreEntries() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
@@ -381,19 +388,22 @@ class MainController : BaseController() {
 
         val task = object:Task<Boolean>() {
             override fun call(): Boolean {
-                val store = App.fs.getStore(selectedStore.id) ?: return false
+                val cache = App.cache ?: return false
+                val index = cache.getIndex(selectedStore.id) ?: return false
+                val archiveIds = index.archiveIds
 
-                for (i in 0 until store.fileCount) {
-                    val data= store.readFile(i) ?: continue
+                for (i in archiveIds.indices) {
+                    val archiveId = archiveIds[i]
+                    val data = cache.readFile(selectedStore.id, archiveId) ?: continue
 
                     if (data.capacity() > 0) {
-                        var name = Settings.getStoreEntryReferenceName(store.storeId, i)
+                        var name = Settings.getStoreEntryReferenceName(selectedStore.id, archiveId)
 
                         if (name == null) {
                             if (Settings.isGzip(data.array())) {
-                                name = "$i.gz"
+                                name = "$archiveId.gz"
                             } else {
-                                name = "$i.dat"
+                                name = "$archiveId.dat"
                             }
                         }
 
@@ -402,9 +412,9 @@ class MainController : BaseController() {
                         }
                     }
 
-                    val progress = (i + 1).toDouble() / store.fileCount * 100
+                    val progress = (i + 1).toDouble() / archiveIds.size * 100
                     updateMessage(String.format("%.2f%s", progress, "%"))
-                    updateProgress((i + 1).toDouble(), store.fileCount.toDouble())
+                    updateProgress((i + 1).toDouble(), archiveIds.size.toDouble())
 
                 }
 
@@ -418,7 +428,7 @@ class MainController : BaseController() {
 
     @FXML
     private fun renameStore() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
@@ -445,7 +455,7 @@ class MainController : BaseController() {
 
     @FXML
     private fun addStoreEntry() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
@@ -458,12 +468,13 @@ class MainController : BaseController() {
 
         val task = object:Task<Boolean>() {
             override fun call(): Boolean {
-                val store = App.fs.getStore(selectedStore.id) ?: return false
+                val cache = App.cache ?: return false
+                val index = cache.getIndex(selectedStore.id) ?: return false
+                val fileCount = index.archiveCount
 
                 for (i in 0 until selectedFiles.size) {
                     val selectedFile = selectedFiles[i]
 
-                    val fileCount = store.fileCount
                     var id = fileCount
 
                     try {
@@ -482,7 +493,7 @@ class MainController : BaseController() {
 
                     val fileData = Files.readAllBytes(selectedFile.toPath())
 
-                    if (store.writeFile(id, fileData)) {
+                    if (cache.writeFile(selectedStore.id, id, fileData)) {
                         val gzipped = Settings.isGzip(fileData)
 
                         var name = selectedFile.name
@@ -526,15 +537,15 @@ class MainController : BaseController() {
     }
 
     override fun onPopulate() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
-        PluginManager.post(LoadCacheEvent(App.fs))
+        PluginManager.post(LoadCacheEvent(App.cache!!))
         storeEntryData.clear()
         storeData.clear()
 
-        for (i in 0 until App.fs.storeCount) {
+        for (i in 0 until App.cache!!.indexCount) {
             val storeName = Settings.getStoreReferenceName(i) ?: "unknown"
             val model = StoreModel(i, storeName)
             storeData.add(model)
@@ -543,7 +554,7 @@ class MainController : BaseController() {
 
     @FXML
     private fun exportStoreEntry() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
@@ -557,10 +568,10 @@ class MainController : BaseController() {
 
         val task = object:Task<Boolean>() {
             override fun call(): Boolean {
-                val store = App.fs.getStore(selectedStore.id) ?: return false
+                val cache = App.cache ?: return false
 
                 for (entry in selectedStoreEntries) {
-                    val buf = store.readFile(entry.id) ?: continue
+                    val buf = cache.readFile(selectedStore.id, entry.id) ?: continue
 
                     var name = entry.name
 
@@ -588,7 +599,7 @@ class MainController : BaseController() {
 
     @FXML
     private fun replaceStoreEntry() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
@@ -606,16 +617,15 @@ class MainController : BaseController() {
 
         val task = object:Task<Boolean>() {
             override fun call(): Boolean {
-
-                val store = App.fs.getStore(selectedStore.id) ?: return false
+                val cache = App.cache ?: return false
 
                 val data= Files.readAllBytes(selectedFile.toPath())
 
-                if (store.writeFile(selectedStoreEntry.id, data)) {
+                if (cache.writeFile(selectedStore.id, selectedStoreEntry.id, data)) {
                     val model = StoreEntryModel(selectedStoreEntry.id, selectedFile.name, data.size)
                     model.icon = ImageView(Settings.getIcon(data))
                     storeEntryData[selectedStoreEntry.id] = model
-                    Settings.putStoreEntryReferenceName(store.storeId, selectedStoreEntry.id, selectedFile.name)
+                    Settings.putStoreEntryReferenceName(selectedStore.id, selectedStoreEntry.id, selectedFile.name)
                 }
 
                 val progress = 1.0 / 1 * 100
@@ -637,7 +647,7 @@ class MainController : BaseController() {
 
     @FXML
     private fun removeStoreEntry() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
@@ -661,21 +671,23 @@ class MainController : BaseController() {
 
         val task = object:Task<Boolean>() {
             override fun call(): Boolean {
-
-                val store = App.fs.getStore(selectedStore.id) ?: return false
+                val cache = App.cache ?: return false
 
                 var flag = false
 
                 for (selectedEntry in selectedStoreEntries) {
                     val file = selectedEntry.id
 
-                    if (store.writeFile(file, ByteArray(0))) { // defrag uses len 0 to determine if a file store should be truncated
+                    if (cache.writeFile(selectedStore.id, file, ByteArray(0))) { // defrag uses len 0 to determine if a file store should be truncated
                         val entry = storeEntryData[file]
                         val model = StoreEntryModel(entry.id, entry.name, 0)
                         model.icon = ImageView(Settings.getIcon("file_32.png"))
                         storeEntryData[file] = model
 
-                        if (file == store.fileCount - 1) {
+                        // Check if this is the last entry to trigger cleanup
+                        val index = cache.getIndex(selectedStore.id)
+                        val archiveCount = index?.archiveCount ?: 0
+                        if (file == archiveCount - 1) {
 
                             // determine the number of files that need to be removed from the end of the store
                             var removeAmount = 0
@@ -700,7 +712,10 @@ class MainController : BaseController() {
                 }
 
                 if (flag) {
-                    App.fs.defragment()
+                    val c = cache
+                    if (c is LegacyCacheSystem) {
+                        c.fileSystem.defragment()
+                    }
                 }
 
                 Platform.runLater {
@@ -717,7 +732,7 @@ class MainController : BaseController() {
 
     @FXML
     private fun computeChecksum() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
             return
         }
 
@@ -728,9 +743,9 @@ class MainController : BaseController() {
 
         val task = object:Task<Boolean>() {
             override fun call(): Boolean {
-                val store = App.fs.getStore(selectedStore.id) ?: return false
+                val cache = App.cache ?: return false
 
-                val buf = store.readFile(selectedStoreEntry.id)
+                val buf = cache.readFile(selectedStore.id, selectedStoreEntry.id)
 
                 var checksum = 0L
 
@@ -754,6 +769,4 @@ class MainController : BaseController() {
         task.run()
 
     }
-
-
 }

@@ -24,15 +24,15 @@ object Settings {
     fun loadSettings() {
         val path: String
 
-        if (!App.fs.isLoaded || !Files.exists(App.fs.root.resolve(".darkan-settings.dat"))) {
+        if (App.cache?.isLoaded != true || !Files.exists(App.cache!!.root.resolve(".darkan-settings.dat"))) {
             path = "/data/.darkan-settings.dat"
         } else {
-            path = App.fs.root.resolve(".darkan-settings.dat").toString()
+            path = App.cache!!.root.resolve(".darkan-settings.dat").toString()
         }
 
         try {
             val stream : InputStream
-            if (!App.fs.isLoaded || !Files.exists(App.fs.root.resolve(".darkan-settings.dat"))) {
+            if (App.cache?.isLoaded != true || !Files.exists(App.cache!!.root.resolve(".darkan-settings.dat"))) {
                 stream = App::class.java.getResourceAsStream(path)
             } else {
                 stream = FileInputStream(File(path))
@@ -65,7 +65,7 @@ object Settings {
         }
     }
 
-    fun save(path: Path = App.fs.root) {
+    fun save(path: Path = App.cache?.root ?: Paths.get("./")) {
         val bos = ByteArrayOutputStream()
         DataOutputStream(bos).use { dos ->
             dos.writeByte(storeNames.entries.size)

@@ -27,12 +27,16 @@ import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
 import darkan.editor.fs.RSArchive
 import darkan.editor.fs.RSFileStore
+import darkan.editor.fs.CacheFormat
 import darkan.editor.gui.App
 import darkan.editor.gui.Settings
 import darkan.editor.gui.controller.BaseController
 import darkan.editor.util.HashUtils
 
 class Controller : BaseController() {
+
+    private var isModernCache = false
+    private var modernSelectedIndexId = -1
 
     @FXML
     lateinit var archiveTable: TableView<ArchiveModel>
@@ -101,16 +105,33 @@ class Controller : BaseController() {
 
             newValue ?: return@addListener
 
-            val archive = newValue.archive
-
             archiveEntryData.clear()
 
-            for (i in 0 until archive.entryCount) {
-                val entry = archive.entries[i]
-                val model = ArchiveEntryModel(i, entry.hash, entry.data.size)
+            if (isModernCache) {
+                val cache = App.cache ?: return@addListener
+                modernSelectedIndexId = newValue.id
+                val index = cache.getIndex(newValue.id) ?: return@addListener
+                val archiveIds = index.archiveIds
 
-                Platform.runLater {
-                    archiveEntryData.add(model)
+                for (archiveId in archiveIds) {
+                    val archive = index.getArchive(archiveId) ?: continue
+                    val fileCount = archive.fileCount
+                    val model = ArchiveEntryModel(archiveId, archiveId, fileCount)
+
+                    Platform.runLater {
+                        archiveEntryData.add(model)
+                    }
+                }
+            } else {
+                val archive = newValue.archive
+
+                for (i in 0 until archive.entryCount) {
+                    val entry = archive.entries[i]
+                    val model = ArchiveEntryModel(i, entry.hash, entry.data.size)
+
+                    Platform.runLater {
+                        archiveEntryData.add(model)
+                    }
                 }
             }
 
@@ -147,7 +168,16 @@ class Controller : BaseController() {
 
     @FXML
     private fun addEntry() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
+            return
+        }
+        if (isModernCache) {
+            Platform.runLater {
+                val alert = Alert(Alert.AlertType.INFORMATION)
+                alert.title = "Info"
+                alert.headerText = "Add entry is not yet supported for modern caches."
+                alert.show()
+            }
             return
         }
 
@@ -195,7 +225,16 @@ class Controller : BaseController() {
 
     @FXML
     private fun replaceEntry() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
+            return
+        }
+        if (isModernCache) {
+            Platform.runLater {
+                val alert = Alert(Alert.AlertType.INFORMATION)
+                alert.title = "Info"
+                alert.headerText = "Replace entry is not yet supported for modern caches."
+                alert.show()
+            }
             return
         }
 
@@ -240,7 +279,16 @@ class Controller : BaseController() {
 
     @FXML
     private fun exportEntries() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
+            return
+        }
+        if (isModernCache) {
+            Platform.runLater {
+                val alert = Alert(Alert.AlertType.INFORMATION)
+                alert.title = "Info"
+                alert.headerText = "Export entries is not yet supported for modern caches."
+                alert.show()
+            }
             return
         }
 
@@ -279,7 +327,16 @@ class Controller : BaseController() {
 
     @FXML
     private fun exportEntry() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
+            return
+        }
+        if (isModernCache) {
+            Platform.runLater {
+                val alert = Alert(Alert.AlertType.INFORMATION)
+                alert.title = "Info"
+                alert.headerText = "Export entry is not yet supported for modern caches."
+                alert.show()
+            }
             return
         }
 
@@ -306,7 +363,10 @@ class Controller : BaseController() {
 
     @FXML
     private fun calculateChecksum() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
+            return
+        }
+        if (isModernCache) {
             return
         }
 
@@ -338,7 +398,10 @@ class Controller : BaseController() {
 
     @FXML
     private fun identifyHash() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
+            return
+        }
+        if (isModernCache) {
             return
         }
 
@@ -389,7 +452,10 @@ class Controller : BaseController() {
 
     @FXML
     private fun renameEntry() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
+            return
+        }
+        if (isModernCache) {
             return
         }
 
@@ -433,7 +499,10 @@ class Controller : BaseController() {
 
     @FXML
     private fun removeEntry() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
+            return
+        }
+        if (isModernCache) {
             return
         }
 
@@ -493,7 +562,16 @@ class Controller : BaseController() {
 
     @FXML
     private fun pack() {
-        if (!App.fs.isLoaded) {
+        if (App.cache?.isLoaded != true) {
+            return
+        }
+        if (isModernCache) {
+            Platform.runLater {
+                val alert = Alert(Alert.AlertType.INFORMATION)
+                alert.title = "Info"
+                alert.headerText = "Pack is not yet supported for modern caches."
+                alert.show()
+            }
             return
         }
 
@@ -501,12 +579,12 @@ class Controller : BaseController() {
 
         val task = object : Task<Boolean>() {
             override fun call(): Boolean {
+                val cache = App.cache ?: return false
                 val archive = selectedArchive.archive
-                val store = App.fs.getStore(RSFileStore.ARCHIVE_FILE_STORE) ?: return false
                 val encoded = archive.encode() ?: return false
 
                 try {
-                    if (store.writeFile(selectedArchive.id, encoded)) {
+                    if (cache.writeFile(RSFileStore.ARCHIVE_FILE_STORE, selectedArchive.id, encoded)) {
                         val alert = Alert(Alert.AlertType.INFORMATION)
                         alert.title = "Info"
                         alert.headerText = selectedArchive.name
@@ -530,36 +608,59 @@ class Controller : BaseController() {
 
         val task = object : Task<Boolean>() {
             override fun call(): Boolean {
-                if (!App.fs.isLoaded) {
+                val cache = App.cache ?: return false
+                if (!cache.isLoaded) {
                     return false
                 }
 
-                val store = App.fs.getStore(RSFileStore.ARCHIVE_FILE_STORE) ?: return false
+                if (cache.format == CacheFormat.MODERN) {
+                    isModernCache = true
+                    val indexCount = cache.indexCount
+                    for (indexId in 0 until indexCount) {
+                        try {
+                            val index = cache.getIndex(indexId) ?: continue
+                            val indexName = MODERN_INDEX_NAMES.getOrDefault(indexId, "Index $indexId")
+                            val name = "$indexName (${index.archiveCount} archives)"
+                            val emptyArchive = RSArchive()
+                            val model = ArchiveModel(indexId, name, emptyArchive)
 
-                for (file in 0 until store.fileCount) {
-                    try {
-                        val data = store.readFile(file) ?: continue
-
-                        if (data.capacity() == 0) {
-                            continue
+                            Platform.runLater {
+                                archiveData.add(model)
+                            }
+                        } catch (ex: Exception) {
+                            ex.printStackTrace()
                         }
+                    }
+                } else {
+                    isModernCache = false
+                    val index = cache.getIndex(RSFileStore.ARCHIVE_FILE_STORE) ?: return false
+                    val archiveIds = index.archiveIds
 
-                        val archive = RSArchive.decode(data) ?: continue
+                    for (archiveId in archiveIds) {
+                        try {
+                            val data = cache.readFile(RSFileStore.ARCHIVE_FILE_STORE, archiveId) ?: continue
 
-                        var name = Settings.getStoreEntryReferenceName(RSFileStore.ARCHIVE_FILE_STORE, file)
+                            if (data.capacity() == 0) {
+                                continue
+                            }
 
-                        if (name == null) {
-                            name = file.toString()
+                            val archive = RSArchive.decode(data) ?: continue
+
+                            var name = Settings.getStoreEntryReferenceName(RSFileStore.ARCHIVE_FILE_STORE, archiveId)
+
+                            if (name == null) {
+                                name = archiveId.toString()
+                            }
+
+                            val model = ArchiveModel(archiveId, name, archive)
+
+                            Platform.runLater {
+                                archiveData.add(model)
+                            }
+
+                        } catch (ex: Exception) {
+                            ex.printStackTrace()
                         }
-
-                        val model = ArchiveModel(file, name, archive)
-
-                        Platform.runLater {
-                            archiveData.add(model)
-                        }
-
-                    } catch (ex: Exception) {
-                        ex.printStackTrace()
                     }
                 }
 
@@ -574,6 +675,56 @@ class Controller : BaseController() {
     override fun onClear() {
         archiveData.clear()
         archiveEntryData.clear()
+        isModernCache = false
+        modernSelectedIndexId = -1
+    }
+
+    companion object {
+        private val MODERN_INDEX_NAMES = mapOf(
+            0 to "Anims",
+            1 to "Bases",
+            2 to "Config",
+            3 to "Interfaces",
+            4 to "Synth Sounds",
+            5 to "Maps",
+            6 to "Music Midi",
+            7 to "Models",
+            8 to "Sprites",
+            9 to "Textures",
+            10 to "Binary",
+            11 to "Music Jingles",
+            12 to "Client Scripts",
+            13 to "Font Metrics",
+            14 to "Vorbis",
+            15 to "Music Instruments",
+            16 to "Object Defs",
+            17 to "Enum Defs",
+            18 to "NPC Defs",
+            19 to "Item Defs",
+            20 to "Anim Defs",
+            21 to "Graphics Defs",
+            22 to "VarBit Defs",
+            23 to "Quick Chat",
+            24 to "Quick Chat Global",
+            25 to "Materials",
+            26 to "Particle Defs",
+            27 to "Defaults",
+            28 to "Billboards",
+            29 to "Native Libs",
+            30 to "Shaders",
+            31 to "Loading Fonts",
+            32 to "Loading Sprites",
+            33 to "Loading Screens",
+            34 to "Raw Loading Sprites",
+            35 to "Cutscenes",
+            36 to "Audio Bus",
+            37 to "Audio Effects",
+            38 to "Audio Mix Bus",
+            39 to "Audio Presets",
+            40 to "World Map",
+            41 to "World Map Labels",
+            42 to "World Map Geography"
+        )
     }
 
 }

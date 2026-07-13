@@ -4,8 +4,19 @@ description = 'Darkan Editor RS2 File System'
 dependencies {
   implementation(project(":io"))
   implementation(project(":util"))
+  implementation 'com.displee:rs-cache-library:8.1.0'
+
+  testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 sourceSets {
   main.java.srcDirs = ['src/main/java', 'src/example/java']
+}
+
+test {
+  useJUnitPlatform()
+  testLogging {
+    showStandardStreams = true
+  }
 }

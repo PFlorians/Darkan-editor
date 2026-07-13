@@ -1,9 +1,9 @@
 package darkan.editor.plugin;
 
-import darkan.editor.fs.io.RSBuffer;
+import darkan.editor.io.RSBuffer;
 import darkan.editor.plugin.extension.ConfigExtension;
 
-@PluginDescriptor(name = "Vanilla 317 Item Definition Plugin", authors = "Nshusa", version = "2.0.0")
+@PluginDescriptor(name = "Item Definition Plugin", authors = "Nshusa", version = "2.0.0")
 public class Plugin extends ConfigExtension implements IPlugin {
 
   @Override
@@ -29,6 +29,16 @@ public class Plugin extends ConfigExtension implements IPlugin {
   }
 
   @Override
+  public int getModernIndexId() {
+    return 19;
+  }
+
+  @Override
+  public int getModernBitShift() {
+    return 8;
+  }
+
+  @Override
   protected void decode(int currentIndex, RSBuffer buffer) {
     this.id = currentIndex;
     while (true) {
@@ -38,11 +48,9 @@ public class Plugin extends ConfigExtension implements IPlugin {
       }
 
       if (opcode == 1) {
-        modelId = buffer.readUShort();
+        modelId = buffer.readBigSmart();
       } else if (opcode == 2) {
-        name = buffer.readString10();
-      } else if (opcode == 3) {
-        description = buffer.readString10();
+        name = buffer.readString();
       } else if (opcode == 4) {
         spriteScale = buffer.readUShort();
       } else if (opcode == 5) {
@@ -59,37 +67,38 @@ public class Plugin extends ConfigExtension implements IPlugin {
         if (spriteTranslateY > 32767) {
           spriteTranslateY -= 0x10000;
         }
-      } else if (opcode == 10) {
-        buffer.readUShort();
       } else if (opcode == 11) {
         stackable = true;
       } else if (opcode == 12) {
         value = buffer.readInt();
+      } else if (opcode == 13) {
+        wearPos = buffer.readUByte();
+      } else if (opcode == 14) {
+        wearPos2 = buffer.readUByte();
       } else if (opcode == 16) {
         members = true;
+      } else if (opcode == 18) {
+        multiStackSize = buffer.readUShort();
       } else if (opcode == 23) {
-        primaryMaleModel = buffer.readUShort();
-        maleTranslation = buffer.readByte();
+        primaryMaleModel = buffer.readBigSmart();
       } else if (opcode == 24) {
-        secondaryMaleModel = buffer.readUShort();
+        secondaryMaleModel = buffer.readBigSmart();
       } else if (opcode == 25) {
-        primaryFemaleModel = buffer.readUShort();
-        femaleTranslation = buffer.readByte();
+        primaryFemaleModel = buffer.readBigSmart();
       } else if (opcode == 26) {
-        secondaryFemaleModel = buffer.readUShort();
+        secondaryFemaleModel = buffer.readBigSmart();
+      } else if (opcode == 27) {
+        wearPos3 = buffer.readUByte();
       } else if (opcode >= 30 && opcode < 35) {
         if (groundActions == null) {
           groundActions = new String[5];
         }
-        groundActions[opcode - 30] = buffer.readString10();
-        if (groundActions[opcode - 30].equalsIgnoreCase("hidden")) {
-          groundActions[opcode - 30] = null;
-        }
+        groundActions[opcode - 30] = buffer.readString();
       } else if (opcode >= 35 && opcode < 40) {
         if (widgetActions == null) {
           widgetActions = new String[5];
         }
-        widgetActions[opcode - 35] = buffer.readString10();
+        widgetActions[opcode - 35] = buffer.readString();
       } else if (opcode == 40) {
         int count = buffer.readUByte();
         originalColours = new int[count];
@@ -98,20 +107,45 @@ public class Plugin extends ConfigExtension implements IPlugin {
           originalColours[i] = buffer.readUShort();
           replacementColours[i] = buffer.readUShort();
         }
+      } else if (opcode == 41) {
+        int count = buffer.readUByte();
+        originalTextures = new int[count];
+        replacementTextures = new int[count];
+        for (int i = 0; i < count; i++) {
+          originalTextures[i] = buffer.readUShort();
+          replacementTextures[i] = buffer.readUShort();
+        }
+      } else if (opcode == 42) {
+        int count = buffer.readUByte();
+        for (int i = 0; i < count; i++) {
+          buffer.readByte();
+        }
+      } else if (opcode == 43) {
+        buffer.readInt(); // tooltip color
+      } else if (opcode == 44) {
+        buffer.readUShort();
+      } else if (opcode == 45) {
+        buffer.readUShort();
+      } else if (opcode == 65) {
+        grandExchange = true;
       } else if (opcode == 78) {
-        tertiaryMaleEquipmentModel = buffer.readUShort();
+        tertiaryMaleEquipmentModel = buffer.readBigSmart();
       } else if (opcode == 79) {
-        tertiaryFemaleEquipmentModel = buffer.readUShort();
+        tertiaryFemaleEquipmentModel = buffer.readBigSmart();
       } else if (opcode == 90) {
-        primaryMaleHeadPiece = buffer.readUShort();
+        primaryMaleHeadPiece = buffer.readBigSmart();
       } else if (opcode == 91) {
-        primaryFemaleHeadPiece = buffer.readUShort();
+        primaryFemaleHeadPiece = buffer.readBigSmart();
       } else if (opcode == 92) {
-        secondaryMaleHeadPiece = buffer.readUShort();
+        secondaryMaleHeadPiece = buffer.readBigSmart();
       } else if (opcode == 93) {
-        secondaryFemaleHeadPiece = buffer.readUShort();
+        secondaryFemaleHeadPiece = buffer.readBigSmart();
+      } else if (opcode == 94) {
+        buffer.readUShort();
       } else if (opcode == 95) {
         spriteCameraYaw = buffer.readUShort();
+      } else if (opcode == 96) {
+        buffer.readUByte();
       } else if (opcode == 97) {
         noteInfoId = buffer.readUShort();
       } else if (opcode == 98) {
@@ -121,7 +155,6 @@ public class Plugin extends ConfigExtension implements IPlugin {
           stackIds = new int[10];
           stackAmounts = new int[10];
         }
-
         stackIds[opcode - 100] = buffer.readUShort();
         stackAmounts[opcode - 100] = buffer.readUShort();
       } else if (opcode == 110) {
@@ -136,6 +169,68 @@ public class Plugin extends ConfigExtension implements IPlugin {
         diffusion = buffer.readByte() * 5;
       } else if (opcode == 115) {
         team = buffer.readUByte();
+      } else if (opcode == 121) {
+        lendId = buffer.readUShort();
+      } else if (opcode == 122) {
+        lendTemplateId = buffer.readUShort();
+      } else if (opcode == 125) {
+        buffer.readByte();
+        buffer.readByte();
+        buffer.readByte();
+      } else if (opcode == 126) {
+        buffer.readByte();
+        buffer.readByte();
+        buffer.readByte();
+      } else if (opcode == 127) {
+        buffer.readUByte();
+        buffer.readUShort();
+      } else if (opcode == 128) {
+        buffer.readUByte();
+        buffer.readUShort();
+      } else if (opcode == 129) {
+        buffer.readUByte();
+        buffer.readUShort();
+      } else if (opcode == 130) {
+        buffer.readUByte();
+        buffer.readUShort();
+      } else if (opcode == 132) {
+        int count = buffer.readUByte();
+        for (int i = 0; i < count; i++) {
+          buffer.readUShort();
+        }
+      } else if (opcode == 134) {
+        buffer.readUByte();
+      } else if (opcode == 139) {
+        bindId = buffer.readUShort();
+      } else if (opcode == 140) {
+        bindTemplateId = buffer.readUShort();
+      } else if (opcode >= 142 && opcode < 147) {
+        buffer.readUShort();
+      } else if (opcode >= 150 && opcode < 155) {
+        buffer.readUShort();
+      } else if (opcode == 157) {
+        // empty
+      } else if (opcode == 161) {
+        buffer.readUShort();
+      } else if (opcode == 162) {
+        buffer.readUShort();
+      } else if (opcode == 163) {
+        buffer.readUShort();
+      } else if (opcode == 164) {
+        buffer.readString();
+      } else if (opcode == 165) {
+        // stackable = 2
+      } else if (opcode == 249) {
+        int length = buffer.readUByte();
+        for (int i = 0; i < length; i++) {
+          boolean isString = buffer.readUByte() == 1;
+          buffer.read24BitInt();
+          if (isString) {
+            buffer.readString();
+          } else {
+            buffer.readInt();
+          }
+        }
       }
     }
   }
@@ -150,12 +245,7 @@ public class Plugin extends ConfigExtension implements IPlugin {
 
     if (name != null) {
       buffer.writeByte(2);
-      buffer.writeString10(name);
-    }
-
-    if (description != null) {
-      buffer.writeByte(3);
-      buffer.writeString10(description);
+      buffer.writeString(name);
     }
 
     if (spriteScale != 2000) {
@@ -196,10 +286,9 @@ public class Plugin extends ConfigExtension implements IPlugin {
       buffer.writeByte(16);
     }
 
-    if (primaryMaleModel != -1 || maleTranslation != 0) {
+    if (primaryMaleModel != -1) {
       buffer.writeByte(23);
       buffer.writeShort(primaryMaleModel);
-      buffer.writeByte(maleTranslation);
     }
 
     if (secondaryMaleModel != -1) {
@@ -207,10 +296,9 @@ public class Plugin extends ConfigExtension implements IPlugin {
       buffer.writeShort(secondaryMaleModel);
     }
 
-    if (primaryFemaleModel != -1 || femaleTranslation != 0) {
+    if (primaryFemaleModel != -1) {
       buffer.writeByte(25);
       buffer.writeShort(primaryFemaleModel);
-      buffer.writeByte(femaleTranslation);
     }
 
     if (secondaryFemaleModel != -1) {
@@ -223,20 +311,18 @@ public class Plugin extends ConfigExtension implements IPlugin {
         if (groundActions[i] == null) {
           continue;
         }
-
         buffer.writeByte(30 + i);
-        buffer.writeString10(groundActions[i]);
+        buffer.writeString(groundActions[i]);
       }
     }
 
-    if (widgetActions != null && widgetActions.length < 6) {
+    if (widgetActions != null) {
       for (int i = 0; i < widgetActions.length; i++) {
         if (widgetActions[i] == null) {
           continue;
         }
-
         buffer.writeByte(35 + i);
-        buffer.writeString10(widgetActions[i]);
+        buffer.writeString(widgetActions[i]);
       }
     }
 
@@ -247,6 +333,19 @@ public class Plugin extends ConfigExtension implements IPlugin {
         buffer.writeShort(originalColours[i]);
         buffer.writeShort(replacementColours[i]);
       }
+    }
+
+    if (originalTextures != null && replacementTextures != null) {
+      buffer.writeByte(41);
+      buffer.writeByte(originalTextures.length);
+      for (int i = 0; i < originalTextures.length; i++) {
+        buffer.writeShort(originalTextures[i]);
+        buffer.writeShort(replacementTextures[i]);
+      }
+    }
+
+    if (grandExchange) {
+      buffer.writeByte(65);
     }
 
     if (tertiaryMaleEquipmentModel != -1) {
@@ -335,44 +434,52 @@ public class Plugin extends ConfigExtension implements IPlugin {
     buffer.writeByte(0);
   }
 
-  private String description;
-  private byte femaleTranslation;
-  private String[] groundActions;
-  private int groundScaleX = 128;
-  private int groundScaleY = 128;
-  private int groundScaleZ = 128;
   private int id = -1;
-  private String[] widgetActions;
-  private int ambience;
-  private int diffusion;
-  private byte maleTranslation;
-  private boolean members;
   private int modelId;
   private String name;
-  private int notedTemplateId = -1;
-  private int noteInfoId = -1;
-  private int[] originalColours;
-  private int primaryFemaleModel = -1;
-  private int primaryFemaleHeadPiece = -1;
-  private int primaryMaleModel = -1;
-  private int primaryMaleHeadPiece = -1;
-  private int[] replacementColours;
-  private int secondaryFemaleModel = -1;
-  private int secondaryFemaleHeadPiece = -1;
-  private int secondaryMaleModel = -1;
-  private int secondaryMaleHeadPiece = -1;
-  private int spriteCameraRoll;
-  private int spriteCameraYaw;
-  private int spritePitch;
   private int spriteScale = 2000;
+  private int spritePitch;
+  private int spriteCameraRoll;
   private int spriteTranslateX;
   private int spriteTranslateY;
   private boolean stackable;
-  private int[] stackAmounts;
-  private int[] stackIds;
-  private int team;
-  private int tertiaryFemaleEquipmentModel = -1;
-  private int tertiaryMaleEquipmentModel = -1;
   private int value = 1;
+  private int wearPos = -1;
+  private int wearPos2 = -1;
+  private int wearPos3 = -1;
+  private boolean members;
+  private int multiStackSize;
+  private int primaryMaleModel = -1;
+  private int secondaryMaleModel = -1;
+  private int primaryFemaleModel = -1;
+  private int secondaryFemaleModel = -1;
+  private String[] groundActions;
+  private String[] widgetActions;
+  private int[] originalColours;
+  private int[] replacementColours;
+  private int[] originalTextures;
+  private int[] replacementTextures;
+  private boolean grandExchange;
+  private int tertiaryMaleEquipmentModel = -1;
+  private int tertiaryFemaleEquipmentModel = -1;
+  private int primaryMaleHeadPiece = -1;
+  private int primaryFemaleHeadPiece = -1;
+  private int secondaryMaleHeadPiece = -1;
+  private int secondaryFemaleHeadPiece = -1;
+  private int spriteCameraYaw;
+  private int noteInfoId = -1;
+  private int notedTemplateId = -1;
+  private int[] stackIds;
+  private int[] stackAmounts;
+  private int groundScaleX = 128;
+  private int groundScaleY = 128;
+  private int groundScaleZ = 128;
+  private int ambience;
+  private int diffusion;
+  private int team;
+  private int lendId = -1;
+  private int lendTemplateId = -1;
+  private int bindId = -1;
+  private int bindTemplateId = -1;
 
 }

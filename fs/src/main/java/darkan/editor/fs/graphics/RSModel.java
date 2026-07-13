@@ -1,6 +1,6 @@
 package darkan.editor.fs.graphics;
 
-import darkan.editor.fs.io.RSBuffer;
+import darkan.editor.io.RSBuffer;
 
 public class RSModel {
 
@@ -33,6 +33,13 @@ public class RSModel {
         faces = nc1.readUShort();
         anInt1642 = nc1.readUByte();
         int flags = nc1.readUByte();
+        boolean hasFaceTypes = (flags & 0x1) != 0;
+        boolean hasVersion = (flags & 0x8) != 0;
+        if (hasVersion) {
+            nc1.setPosition(data.length - 24);
+            nc1.readUByte(); // version byte, ignored for rendering
+            nc1.setPosition(data.length - 17);
+        }
         int priority_opcode = nc1.readUByte();
         int alpha_opcode = nc1.readUByte();
         int tSkin_opcode = nc1.readUByte();
@@ -71,7 +78,7 @@ public class RSModel {
         pos += vertices;
 
         int drawTypeBasePos = pos;
-        if (flags == 1)
+        if (hasFaceTypes)
             pos += faces;
 
         int faceMeshLink_offset = pos;
@@ -142,7 +149,7 @@ public class RSModel {
         if (vSkin_opcode == 1)
             anIntArray1655 = new int[vertices];
 
-        if (flags == 1)
+        if (hasFaceTypes)
             anIntArray1637 = new int[faces];
 
         if (priority_opcode == 255)
@@ -209,7 +216,7 @@ public class RSModel {
         nc7.setPosition(textureBasePos);
         for (face = 0; face < faces; face++) {
             colors[face] = (short) nc1.readUShort();
-            if (flags == 1) {
+            if (hasFaceTypes) {
                 anIntArray1637[face] = nc2.readByte();
             }
             if (priority_opcode == 255) {
@@ -226,18 +233,13 @@ public class RSModel {
 
             if (texture_opcode == 1) {
                 texture[face] = (short) (nc6.readUShort() - 1);
-                if (texture[face] >= 0) {
-                    if (anIntArray1637 != null) {
-                        if (anIntArray1637[face] < 2 && colors[face] != 127 && colors[face] != -27075) {
-                            texture[face] = -1;
-                        }
-                    }
-                }
-                if (texture[face] != -1)
-                    colors[face] = 127;
             }
-            if (texture_coordinates != null && texture[face] != -1) {
-                texture_coordinates[face] = (byte) (nc7.readUByte() - 1);
+            if (texture_coordinates != null) {
+                if (texture[face] != -1) {
+                    texture_coordinates[face] = (byte) (nc7.readUByte() - 1);
+                } else {
+                    texture_coordinates[face] = -1;
+                }
             }
         }
         nc1.setPosition(faceVPoint_offset);

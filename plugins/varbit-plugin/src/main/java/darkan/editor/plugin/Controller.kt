@@ -8,6 +8,8 @@ import javafx.scene.control.ListView
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import darkan.editor.fs.RSArchive
+import darkan.editor.fs.RSFileStore
+import darkan.editor.fs.CacheFormat
 import darkan.editor.fx.TupleCellFactory
 import darkan.editor.gui.App
 import darkan.editor.gui.controller.BaseController
@@ -62,23 +64,24 @@ class Controller : BaseController() {
         data.clear()
         indexes.clear()
 
-        PluginManager.post(LoadCacheEvent(App.fs))
+        val cache = App.cache ?: return
+        PluginManager.post(LoadCacheEvent(cache))
 
-        try {
-            val archive = App.fs.getArchive(RSArchive.CONFIG_ARCHIVE)
+        val currentPlugin = this.currentPlugin
 
-            val currentPlugin = this.currentPlugin
-
-            if (currentPlugin is ConfigExtension) {
-                try {
+        if (currentPlugin is ConfigExtension) {
+            try {
+                if (cache.format == CacheFormat.MODERN) {
+                    currentPlugin.onLoadModern(indexes, cache)
+                } else {
+                    val archiveData = cache.readFile(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.CONFIG_ARCHIVE) ?: return
+                    val archive = RSArchive.decode(archiveData)
                     currentPlugin.onLoad(indexes, archive)
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                    FXDialogUtil.showException(ex)
                 }
+            } catch (ex: Exception) {
+                ex.printStackTrace()
+                FXDialogUtil.showException(ex)
             }
-        } catch (ex: Exception) {
-            ex.printStackTrace()
         }
     }
 
@@ -95,11 +98,17 @@ class Controller : BaseController() {
     @FXML
     fun onSave() {
         try {
-            val archive = App.fs.getArchive(RSArchive.CONFIG_ARCHIVE)
+            val cache = App.cache ?: return
             val currentPlugin = this.currentPlugin
 
             if (currentPlugin is ConfigExtension) {
-                currentPlugin.onSave(indexes, archive)
+                if (cache.format == CacheFormat.MODERN) {
+                    currentPlugin.onSaveModern(indexes, cache)
+                } else {
+                    val archiveData = cache.readFile(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.CONFIG_ARCHIVE) ?: return
+                    val archive = RSArchive.decode(archiveData)
+                    currentPlugin.onSave(indexes, archive)
+                }
             }
         } catch (ex: Exception) {
             ex.printStackTrace()
