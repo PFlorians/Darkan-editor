@@ -7,7 +7,10 @@ import javafx.scene.Scene
 import javafx.scene.image.Image
 import javafx.stage.Stage
 import javafx.stage.StageStyle
-import darkan.editor.fs.RSFileSystem
+import darkan.editor.fs.CacheSystem
+import darkan.editor.fs.CacheSystemFactory
+import darkan.editor.fs.CacheSystemHolder
+import java.nio.file.Path
 
 class App : Application() {
 
@@ -31,17 +34,34 @@ class App : Application() {
     }
 
     override fun stop() {
-        if (fs.isLoaded) {
-            Settings.save(fs.root)
+        val c = cache
+        if (c != null && c.isLoaded) {
+            Settings.save(c.root)
         }
     }
 
     companion object {
         const val VERSION = "3.1.0"
 
-        val fs: RSFileSystem = RSFileSystem.getInstance()
+        var cache: CacheSystem? = null
+            private set
 
         lateinit var mainStage : Stage
+
+        fun openCache(path: Path) {
+            cache?.close()
+            val system = CacheSystemFactory.open(path)
+            if (system.load()) {
+                cache = system
+                CacheSystemHolder.set(system)
+            }
+        }
+
+        fun closeCache() {
+            cache?.close()
+            cache = null
+            CacheSystemHolder.set(null)
+        }
 
         @JvmStatic
         fun main(args : Array<String>) {

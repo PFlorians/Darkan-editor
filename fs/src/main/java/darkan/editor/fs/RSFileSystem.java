@@ -19,7 +19,7 @@ public class RSFileSystem implements Closeable {
 
     private static RSFileSystem instance;
 
-    private RSFileSystem() {}
+    RSFileSystem() {}
 
     public static RSFileSystem getInstance() {
         if (instance == null) {

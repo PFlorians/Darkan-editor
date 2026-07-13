@@ -9,8 +9,10 @@ import javafx.scene.layout.GridPane
 import javafx.scene.layout.Priority
 import darkan.editor.fs.RSArchive
 import darkan.editor.fs.RSFileStore
-import darkan.editor.fs.RSFileSystem
-import darkan.editor.fs.io.RSBuffer
+import darkan.editor.fs.CacheSystem
+import darkan.editor.fs.CacheFormat
+import darkan.editor.fs.CacheSystemHolder
+import darkan.editor.io.RSBuffer
 import darkan.editor.plugin.PluginDescriptor
 import darkan.editor.shared.model.KeyModel
 import darkan.editor.util.getFileNameWithoutExtension
@@ -88,6 +90,87 @@ abstract class ConfigExtension : IPluginExtension {
         }
     }
 
+    open fun getModernIndexId(): Int = -1
+
+    open fun getModernBitShift(): Int = 0
+
+    open fun onLoadModern(list: ObservableList<KeyModel>, cache: CacheSystem) {
+        try {
+            val indexId = getModernIndexId()
+            if (indexId < 0) {
+                return
+            }
+
+            val index = cache.getIndex(indexId) ?: return
+            val bitShift = getModernBitShift()
+            val archiveIds = index.archiveIds
+
+            for (archiveId in archiveIds) {
+                val archive = index.getArchive(archiveId) ?: continue
+                val fileIds = archive.fileIds
+
+                for (fileId in fileIds) {
+                    val defId = (archiveId shl bitShift) or fileId
+                    val fileData = cache.readFile(indexId, archiveId, fileId) ?: continue
+                    if (fileData.remaining() == 0) continue
+
+                    try {
+                        val instance = this.javaClass.getConstructor().newInstance()
+                        instance.decode(defId, RSBuffer.wrap(fileData.array()))
+                        val set = RSPropertySet().mapInstanceFields(instance)
+                        val model = KeyModel(defId, set.getOrDefault("name", "null"), instance)
+                        model.map = TreeMap(set.properties)
+                        list.add(model)
+                    } catch (ex: Exception) {
+                        // Skip definitions that fail to decode
+                        System.err.println("Failed to decode definition $defId: ${ex.message}")
+                    }
+                }
+            }
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            showError(ex)
+        }
+    }
+
+    open fun onSaveModern(list: ObservableList<KeyModel>, cache: CacheSystem) {
+        try {
+            if (list.isEmpty()) {
+                return
+            }
+
+            val indexId = getModernIndexId()
+            if (indexId < 0) {
+                return
+            }
+
+            val bitShift = getModernBitShift()
+
+            for (item in list) {
+                val instance = item.instance as ConfigExtension
+                item.map.mapToInstance(instance)
+
+                val dataBuf = RSBuffer.init()
+                instance.encode(dataBuf)
+
+                val defId = item.id
+                val archiveId = defId ushr bitShift
+                val fileId = defId and ((1 shl bitShift) - 1)
+
+                cache.writeFile(indexId, archiveId, fileId, dataBuf.toArray())
+            }
+
+            val alert = Alert(Alert.AlertType.INFORMATION)
+            alert.title = "Info"
+            alert.headerText = "Success!"
+            Platform.runLater { alert.show() }
+
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            showError(ex)
+        }
+    }
+
     open fun showError(ex: Exception) {
         val alert = Alert(Alert.AlertType.ERROR)
         alert.title = "Error"
@@ -156,10 +239,10 @@ abstract class ConfigExtension : IPluginExtension {
                 archive.writeFile(getMetaFileName(), metaBuf.toArray())
             }
 
-            val store = RSFileSystem.getInstance().getStore(getStoreId()) ?: return
+            val cache = CacheSystemHolder.get() ?: return
             val encoded = archive.encode() ?: return
 
-            if (store.writeFile(getFileId(), encoded)) {
+            if (cache.writeFile(getStoreId(), getFileId(), encoded)) {
                 val alert = Alert(Alert.AlertType.INFORMATION)
                 alert.title = "Info"
                 alert.headerText = "Success!"

@@ -28,6 +28,7 @@ import javax.imageio.ImageIO
 import org.imgscalr.Scalr
 import darkan.editor.fs.RSArchive
 import darkan.editor.fs.RSFileStore
+import darkan.editor.fs.CacheFormat
 import darkan.editor.fs.graphics.RSSprite
 import darkan.editor.gui.App
 import darkan.editor.gui.Settings
@@ -123,7 +124,18 @@ class Controller : BaseController() {
     override fun onPopulate() {
         items.clear()
 
-        val archive = App.fs.getArchive(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.TEXTURE_ARCHIVE) ?: return
+        val cache = App.cache ?: return
+
+        if (cache.format == CacheFormat.MODERN) {
+            val alert = Alert(Alert.AlertType.INFORMATION)
+            alert.title = "Info"
+            alert.headerText = "Texture browsing is not yet supported for modern caches."
+            Platform.runLater { alert.show() }
+            return
+        }
+
+        val data = cache.readFile(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.TEXTURE_ARCHIVE) ?: return
+        val archive = RSArchive.decode(data)
 
         val indexHash = HashUtils.hashName("index.dat")
 
@@ -318,8 +330,8 @@ class Controller : BaseController() {
 
                 val encoded = archive.encode()
 
-                val store = App.fs.getStore(RSFileStore.ARCHIVE_FILE_STORE)
-                store.writeFile(RSArchive.TEXTURE_ARCHIVE, encoded)
+                val cache = App.cache ?: return false
+                cache.writeFile(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.TEXTURE_ARCHIVE, encoded)
 
                 val alert = Alert(Alert.AlertType.INFORMATION)
                 alert.title = "Info"

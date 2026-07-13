@@ -21,7 +21,7 @@ gui/build/
 util/src/main/java/META-INF/MANIFEST.MF
 build/
 dump/
-test/
+/test/
 plugins-runtime/
 cache/
 

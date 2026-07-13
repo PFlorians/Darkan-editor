@@ -1,4 +1,6 @@
-package darkan.editor.fs.io
+package darkan.editor.io
+
+import java.lang.Short
 
 class RSBuffer private constructor(private var buffer: ByteArray) {
 
@@ -13,12 +15,12 @@ class RSBuffer private constructor(private var buffer: ByteArray) {
     }
 
     fun readShort(): Int {
-        position += java.lang.Short.BYTES
+        position += Short.BYTES
         return (buffer[position - 2].toInt() shl 8) + (buffer[position - 1].toInt() and 0xFF)
     }
 
     fun readUShort(): Int {
-        position += java.lang.Short.BYTES
+        position += Short.BYTES
         return (buffer[position - 2].toInt() and 0xFF shl 8) + (buffer[position - 1].toInt() and 0xFF)
     }
 
@@ -33,7 +35,7 @@ class RSBuffer private constructor(private var buffer: ByteArray) {
     }
 
     fun writeShort(value: Int) {
-        validateCapacity(java.lang.Short.BYTES)
+        validateCapacity(Short.BYTES)
         buffer[position++] = (value shr 8).toByte()
         buffer[position++] = value.toByte()
     }
@@ -68,6 +70,44 @@ class RSBuffer private constructor(private var buffer: ByteArray) {
         } else {
             readUShort() - 49152
         }
+    }
+
+    fun readUnsignedSmart(): Int {
+        val value = buffer[position].toInt() and 0xff
+        return if (value < 128) {
+            readUByte()
+        } else {
+            readUShort() - 32768
+        }
+    }
+
+    fun readBigSmart(): Int {
+        if (peekByte() and 0xff < 128) {
+            val value = readUShort()
+            return if (value == 32767) -1 else value
+        }
+        return readInt() and 0x7fffffff
+    }
+
+    fun read24BitInt(): Int {
+        return (readUByte() shl 16) + (readUByte() shl 8) + readUByte()
+    }
+
+    fun peekByte(): Int {
+        return if (position < buffer.size) buffer[position].toInt() else 0
+    }
+
+    fun readString(): String {
+        val startOffset = position
+        while (buffer[position++].toInt() != 0);
+        return String(buffer, startOffset, position - startOffset - 1)
+    }
+
+    fun writeString(s: String) {
+        validateCapacity(s.length + 1)
+        System.arraycopy(s.toByteArray(), 0, buffer, position, s.length)
+        position += s.length
+        buffer[position++] = 0
     }
 
     fun readString10(): String {

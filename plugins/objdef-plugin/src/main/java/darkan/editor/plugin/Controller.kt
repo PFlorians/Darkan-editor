@@ -10,6 +10,8 @@ import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.TextField
 import darkan.editor.fs.RSArchive
+import darkan.editor.fs.RSFileStore
+import darkan.editor.fs.CacheFormat
 import darkan.editor.fx.TupleCellFactory
 import darkan.editor.gui.App
 import darkan.editor.gui.controller.BaseController
@@ -119,14 +121,21 @@ class Controller : BaseController() {
     override fun onPopulate() {
         data.clear()
         indexes.clear()
-        PluginManager.post(LoadCacheEvent(App.fs))
 
-        val archive = App.fs.getArchive(RSArchive.CONFIG_ARCHIVE)
+        val cache = App.cache ?: return
+        PluginManager.post(LoadCacheEvent(cache))
+
         val plugin = this.currentPlugin
 
         if (plugin is ConfigExtension) {
             try {
-                plugin.onLoad(indexes, archive)
+                if (cache.format == CacheFormat.MODERN) {
+                    plugin.onLoadModern(indexes, cache)
+                } else {
+                    val archiveData = cache.readFile(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.CONFIG_ARCHIVE) ?: return
+                    val archive = RSArchive.decode(archiveData)
+                    plugin.onLoad(indexes, archive)
+                }
             } catch (ex: java.lang.Exception) {
                 ex.printStackTrace()
                 FXDialogUtil.showException(ex)
@@ -146,12 +155,18 @@ class Controller : BaseController() {
 
     @FXML
     fun onSave() {
-        val archive = App.fs.getArchive(RSArchive.CONFIG_ARCHIVE)
+        val cache = App.cache ?: return
         val plugin = this.currentPlugin
 
         if (plugin is ConfigExtension) {
             try {
-                plugin.onSave(indexes, archive)
+                if (cache.format == CacheFormat.MODERN) {
+                    plugin.onSaveModern(indexes, cache)
+                } else {
+                    val archiveData = cache.readFile(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.CONFIG_ARCHIVE) ?: return
+                    val archive = RSArchive.decode(archiveData)
+                    plugin.onSave(indexes, archive)
+                }
             } catch (ex: Exception) {
                 ex.printStackTrace()
                 FXDialogUtil.showException(ex)

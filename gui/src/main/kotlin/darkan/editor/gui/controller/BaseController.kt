@@ -120,7 +120,7 @@ abstract class BaseController : Initializable {
 
     @FXML
     fun openFS() {
-        if (App.fs.isLoaded) {
+        if (App.cache?.isLoaded == true) {
             onPopulate()
             return
         }
@@ -129,9 +129,9 @@ abstract class BaseController : Initializable {
         chooser.title = "Select directory containing cache"
         chooser.initialDirectory = File("./")
         val selectedDir = chooser.showDialog(App.mainStage) ?: return
-        App.fs.root = selectedDir.toPath()
 
-        if (!App.fs.load()) {
+        App.openCache(selectedDir.toPath())
+        if (App.cache == null || !App.cache!!.isLoaded) {
             return
         }
 
@@ -179,8 +179,8 @@ abstract class BaseController : Initializable {
 
     @FXML
     private fun clearProgram() {
-        if (App.fs.isLoaded) {
-            App.fs.reset()
+        if (App.cache?.isLoaded == true) {
+            App.closeCache()
         }
         onClear()
     }

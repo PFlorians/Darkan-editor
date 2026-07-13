@@ -1,5 +1,5 @@
 package darkan.editor.gui.event
 
-import darkan.editor.fs.RSFileSystem
+import darkan.editor.fs.CacheSystem
 
-class LoadCacheEvent(val fs: RSFileSystem)
+class LoadCacheEvent(val cache: CacheSystem)
