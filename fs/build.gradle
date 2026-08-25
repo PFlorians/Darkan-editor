@@ -5,6 +5,8 @@ dependencies {
   implementation(project(":io"))
   implementation(project(":util"))
   implementation 'com.displee:rs-cache-library:8.1.0'
+  implementation 'net.runelite:cache:1.12.36'
+  implementation 'org.openrs2:openrs2-cache-550:0.1.0'
 
   testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
   testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

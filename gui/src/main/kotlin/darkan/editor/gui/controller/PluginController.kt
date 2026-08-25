@@ -20,6 +20,7 @@ import darkan.editor.plugin.model.PluginWrapper
 import darkan.editor.gui.App
 import darkan.editor.plugin.PluginManager
 import darkan.editor.gui.util.FXDialogUtil
+import darkan.editor.gui.util.ResizableStageHelper
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -129,7 +130,7 @@ class PluginController : BaseController() {
             val stage = Stage()
             val scene = Scene(root)
             stage.scene = scene
-            stage.isResizable = false
+            stage.isResizable = true
             stage.initStyle(StageStyle.UNDECORATED)
             stage.scene.stylesheets.addAll(stylesheetPaths)
             stage.icons.add(Image(URL(buildResourcePath(jarPath, value.plugin.applicationIcon())).openStream()))
@@ -142,6 +143,7 @@ class PluginController : BaseController() {
             currentStage.icons.addAll(stage.icons)
             currentStage.scene = stage.scene
             currentStage.centerOnScreen()
+            ResizableStageHelper.install(currentStage)
         } catch (ex: Exception) {
             ex.printStackTrace()
             FXDialogUtil.showException(ex)

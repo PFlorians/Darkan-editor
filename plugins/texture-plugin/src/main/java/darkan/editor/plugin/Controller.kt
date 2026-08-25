@@ -1,6 +1,18 @@
 package darkan.editor.plugin
 
-import java.awt.Desktop
+import darkan.editor.fs.CacheFormat
+import darkan.editor.fs.CacheSystem
+import darkan.editor.fs.RSArchive
+import darkan.editor.fs.RSFileStore
+import darkan.editor.fs.codec.ModernSpriteCodec
+import darkan.editor.fs.codec.ModernTextureCodec
+import darkan.editor.fs.graphics.RSSprite
+import darkan.editor.gui.App
+import darkan.editor.gui.Settings
+import darkan.editor.gui.controller.BaseController
+import darkan.editor.gui.util.toType
+import darkan.editor.gui.util.write24Int
+import darkan.editor.util.HashUtils
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
@@ -15,7 +27,6 @@ import javafx.concurrent.Task
 import javafx.embed.swing.SwingFXUtils
 import javafx.fxml.FXML
 import javafx.scene.control.Alert
-import javafx.scene.control.ButtonBar
 import javafx.scene.control.ButtonType
 import javafx.scene.control.ComboBox
 import javafx.scene.control.ListCell
@@ -26,16 +37,6 @@ import javafx.scene.text.Text
 import javafx.stage.FileChooser
 import javax.imageio.ImageIO
 import org.imgscalr.Scalr
-import darkan.editor.fs.RSArchive
-import darkan.editor.fs.RSFileStore
-import darkan.editor.fs.CacheFormat
-import darkan.editor.fs.graphics.RSSprite
-import darkan.editor.gui.App
-import darkan.editor.gui.Settings
-import darkan.editor.gui.controller.BaseController
-import darkan.editor.gui.util.toType
-import darkan.editor.gui.util.write24Int
-import darkan.editor.util.HashUtils
 
 class Controller : BaseController() {
 
@@ -127,10 +128,7 @@ class Controller : BaseController() {
         val cache = App.cache ?: return
 
         if (cache.format == CacheFormat.MODERN) {
-            val alert = Alert(Alert.AlertType.INFORMATION)
-            alert.title = "Info"
-            alert.headerText = "Texture browsing is not yet supported for modern caches."
-            Platform.runLater { alert.show() }
+            loadModernTextures(cache)
             return
         }
 
@@ -181,7 +179,43 @@ class Controller : BaseController() {
             Settings.putNameForHash("${model.id}.dat")
             items.add(model)
         }
+    }
 
+    private fun loadModernTextures(cache: CacheSystem) {
+        val textureIndex = cache.getIndex(9) ?: return
+        val archive = textureIndex.getArchive(0) ?: return
+        val fileIds = archive.fileIds
+
+        for (fileId in fileIds) {
+            val data = cache.readFile(9, 0, fileId) ?: continue
+            if (data.remaining() == 0) continue
+
+            try {
+                val bytes = ByteArray(data.remaining())
+                data.get(bytes)
+                val texDef = ModernTextureCodec.decode(fileId, bytes)
+
+                val image = ModernTextureCodec.renderTexture(texDef) { spriteId ->
+                    resolveModernSprite(cache, spriteId)
+                }
+
+                val rsSprite = RSSprite(image)
+                items.add(SpriteModel(fileId, rsSprite))
+            } catch (ex: Exception) {
+                System.err.println("Failed to decode texture $fileId: ${ex.message}")
+            }
+        }
+    }
+
+    private fun resolveModernSprite(cache: CacheSystem, spriteId: Int): BufferedImage? {
+        val data = cache.readFile(8, spriteId) ?: return null
+        if (data.remaining() == 0) return null
+
+        val bytes = ByteArray(data.remaining())
+        data.get(bytes)
+        val frames = ModernSpriteCodec.decode(bytes)
+        if (frames.isEmpty()) return null
+        return frames[0].image()
     }
 
     @FXML
@@ -194,36 +228,14 @@ class Controller : BaseController() {
             outputDir.mkdir()
         }
 
+        val file = File(outputDir, "${selectedItem.id}.png")
         val bimage = selectedItem.sprite.toBufferedImage()
-        ImageIO.write(bimage, "png", File(outputDir, "${selectedItem.id}.png"))
+        ImageIO.write(bimage, "png", file)
 
-        val alert = Alert(Alert.AlertType.CONFIRMATION)
-        alert.title = "Information"
-        alert.headerText = "Would you like to view this file?"
-        alert.contentText = "Choose an option."
-
-        val choiceOne = ButtonType("Yes.")
-        val close = ButtonType("No", ButtonBar.ButtonData.CANCEL_CLOSE)
-
-        alert.buttonTypes.setAll(choiceOne, close)
-
-        val result = alert.showAndWait()
-
-        if (result.isPresent) {
-
-            val type = result.get()
-
-            if (type == choiceOne) {
-                try {
-                    Desktop.getDesktop().open(outputDir)
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                }
-
-            }
-
-        }
-
+        val alert = Alert(Alert.AlertType.INFORMATION)
+        alert.title = "Info"
+        alert.headerText = "Exported to ${file.absolutePath}"
+        alert.showAndWait()
     }
 
     @FXML
@@ -352,10 +364,11 @@ class Controller : BaseController() {
     @FXML
     private fun replaceTexture() {
         val selectedItem = listView.selectionModel.selectedItem ?: return
+        val cache = App.cache ?: return
 
         val chooser = FileChooser()
         chooser.initialDirectory = File("./")
-        chooser.title = "Select sprites to add"
+        chooser.title = "Select the replacement image"
         chooser.extensionFilters.add(FileChooser.ExtensionFilter("Images", "*.png", "*.jpg"))
 
         val selectedFile = chooser.showOpenDialog(App.mainStage) ?: return
@@ -363,36 +376,66 @@ class Controller : BaseController() {
         try {
             var bimage = ImageIO.read(selectedFile) ?: return
 
-            if (bimage.type != BufferedImage.TYPE_INT_RGB) {
-                bimage = bimage.toType(BufferedImage.TYPE_INT_RGB)
+            if (cache.format == CacheFormat.MODERN) {
+                replaceModernTexture(selectedItem, bimage, cache)
+            } else {
+                replaceLegacyTexture(selectedItem, bimage, selectedFile.name)
             }
-
-            val sprite = RSSprite(bimage)
-
-            if (bimage.width < 64 || bimage.width > 128 || bimage.height < 64 || bimage.height > 128) {
-                val alert = Alert(Alert.AlertType.WARNING)
-                alert.headerText = "Image=${selectedFile.name} width/height must be between 64-128"
-                alert.showAndWait()
-                return
-            }
-
-            val colors = sprite.pixels.toSet()
-
-            if (colors.size > 255) {
-                val alert = Alert(Alert.AlertType.WARNING)
-                alert.headerText = "Image=${selectedFile.name} exceeds color limit=255 colors=${colors.size}"
-                alert.showAndWait()
-                return
-            }
-
-            items[selectedItem.id].sprite = sprite
-
-            updateInfo(selectedItem.id, sprite)
-
-            listView.refresh()
         } catch (ex: Exception) {
             ex.printStackTrace()
         }
+    }
+
+    private fun replaceModernTexture(selectedItem: SpriteModel, bimage: BufferedImage, cache: CacheSystem) {
+        val texData = cache.readFile(9, 0, selectedItem.id) ?: return
+        val texBytes = ByteArray(texData.remaining())
+        texData.get(texBytes)
+        val texDef = ModernTextureCodec.decode(selectedItem.id, texBytes)
+
+        if (texDef.spriteIds() == null || texDef.spriteIds().isEmpty()) return
+        val spriteId = texDef.spriteIds()[0]
+
+        val encoded = ModernSpriteCodec.encode(listOf(bimage))
+        cache.writeFile(8, spriteId, encoded)
+
+        val rsSprite = RSSprite(bimage)
+        selectedItem.sprite = rsSprite
+        updateInfo(selectedItem.id, rsSprite)
+        listView.refresh()
+
+        val alert = Alert(Alert.AlertType.INFORMATION)
+        alert.title = "Info"
+        alert.headerText = "Texture sprite replaced successfully!"
+        Platform.runLater { alert.showAndWait() }
+    }
+
+    private fun replaceLegacyTexture(selectedItem: SpriteModel, bimage: BufferedImage, fileName: String) {
+        var img = bimage
+        if (img.type != BufferedImage.TYPE_INT_RGB) {
+            img = img.toType(BufferedImage.TYPE_INT_RGB)
+        }
+
+        val sprite = RSSprite(img)
+
+        if (img.width < 64 || img.width > 128 || img.height < 64 || img.height > 128) {
+            val alert = Alert(Alert.AlertType.WARNING)
+            alert.headerText = "Image=$fileName width/height must be between 64-128"
+            alert.showAndWait()
+            return
+        }
+
+        val colors = sprite.pixels.toSet()
+
+        if (colors.size > 255) {
+            val alert = Alert(Alert.AlertType.WARNING)
+            alert.headerText = "Image=$fileName exceeds color limit=255 colors=${colors.size}"
+            alert.showAndWait()
+            return
+        }
+
+        items[selectedItem.id].sprite = sprite
+        updateInfo(selectedItem.id, sprite)
+        listView.refresh()
     }
 
     @FXML
@@ -490,37 +533,13 @@ class Controller : BaseController() {
 
         for (item in items) {
             val bimage = item.sprite.toBufferedImage()
-
             ImageIO.write(bimage, "png", File(outputDir, "${item.id}.png"))
         }
 
-        val alert = Alert(Alert.AlertType.CONFIRMATION)
-        alert.title = "Information"
-        alert.headerText = "Would you like to view these files?"
-        alert.contentText = "Choose an option."
-
-        val choiceOne = ButtonType("Yes.")
-        val close = ButtonType("No", ButtonBar.ButtonData.CANCEL_CLOSE)
-
-        alert.buttonTypes.setAll(choiceOne, close)
-
-        val result = alert.showAndWait()
-
-        if (result.isPresent) {
-
-            val type = result.get()
-
-            if (type == choiceOne) {
-                try {
-                    Desktop.getDesktop().open(outputDir)
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                }
-
-            }
-
-        }
-
+        val alert = Alert(Alert.AlertType.INFORMATION)
+        alert.title = "Info"
+        alert.headerText = "Exported ${items.size} textures to ${outputDir.absolutePath}"
+        alert.showAndWait()
     }
 
     @FXML

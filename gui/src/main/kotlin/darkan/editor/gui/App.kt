@@ -10,6 +10,7 @@ import javafx.stage.StageStyle
 import darkan.editor.fs.CacheSystem
 import darkan.editor.fs.CacheSystemFactory
 import darkan.editor.fs.CacheSystemHolder
+import darkan.editor.gui.util.ResizableStageHelper
 import java.nio.file.Path
 
 class App : Application() {
@@ -28,9 +29,10 @@ class App : Application() {
         stage.scene = scene
         stage.icons.add(Image(App::class.java.getResourceAsStream("/icons/icon.png")))
         stage.centerOnScreen()
-        stage.isResizable = false
+        stage.isResizable = true
         stage.initStyle(StageStyle.UNDECORATED)
         stage.show()
+        ResizableStageHelper.install(stage)
     }
 
     override fun stop() {

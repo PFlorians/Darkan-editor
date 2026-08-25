@@ -1,6 +1,6 @@
 package darkan.editor.plugin
 
-@PluginDescriptor(name = "317 Texture Plugin", authors = ["Nshusa"])
+@PluginDescriptor(name = "Texture Plugin", authors = ["Nshusa"], version = "2.0.0")
 class Plugin : IPlugin {
 
     override fun applicationIcon(): String {

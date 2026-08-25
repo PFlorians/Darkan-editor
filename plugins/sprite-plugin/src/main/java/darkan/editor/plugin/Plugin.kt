@@ -1,6 +1,6 @@
 package darkan.editor.plugin
 
-@PluginDescriptor(name = "Vanilla 317 Sprite Plugin")
+@PluginDescriptor(name = "Sprite Plugin", authors = ["Nshusa"], version = "2.0.0")
 class Plugin : IPlugin {
 
     override fun applicationIcon(): String {
