@@ -1,6 +1,5 @@
 package darkan.editor.plugin
 
-import java.awt.Desktop
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
@@ -32,6 +31,8 @@ import org.imgscalr.Scalr
 import darkan.editor.fs.RSArchive
 import darkan.editor.fs.RSFileStore
 import darkan.editor.fs.CacheFormat
+import darkan.editor.fs.CacheSystem
+import darkan.editor.fs.codec.ModernSpriteCodec
 import darkan.editor.fs.graphics.RSImageArchive
 import darkan.editor.fs.graphics.RSSprite
 import darkan.editor.gui.App
@@ -343,10 +344,7 @@ class Controller : BaseController() {
         val cache = App.cache ?: return
 
         if (cache.format == CacheFormat.MODERN) {
-            val alert = Alert(Alert.AlertType.INFORMATION)
-            alert.title = "Info"
-            alert.headerText = "Sprite browsing is not yet supported for modern caches."
-            alert.showAndWait()
+            loadModernSprites(cache)
             return
         }
 
@@ -376,9 +374,62 @@ class Controller : BaseController() {
         }
     }
 
+    private fun loadModernSprites(cache: CacheSystem) {
+        val index = cache.getIndex(8) ?: return
+        val archiveIds = index.archiveIds
+
+        for (archiveId in archiveIds) {
+            val data = cache.readFile(8, archiveId) ?: continue
+            if (data.remaining() == 0) continue
+
+            try {
+                val bytes = ByteArray(data.remaining())
+                data.get(bytes)
+                val frames = ModernSpriteCodec.decode(bytes)
+                if (frames.isEmpty()) continue
+
+                val spriteModels = mutableListOf<SpriteModel>()
+                for (frame in frames) {
+                    val pixels = imageToPixelArray(frame.image())
+                    val rsSprite = RSSprite(
+                        frame.maxWidth(), frame.maxHeight(),
+                        frame.offsetX(), frame.offsetY(),
+                        frame.width(), frame.height(),
+                        0,
+                        pixels
+                    )
+                    spriteModels.add(SpriteModel(frame.frame(), rsSprite))
+                }
+
+                archives.add(ImageArchiveModel(archiveId, spriteModels))
+            } catch (ex: Exception) {
+                System.err.println("Failed to decode sprite archive $archiveId: ${ex.message}")
+            }
+        }
+    }
+
+    private fun imageToPixelArray(image: BufferedImage): IntArray {
+        val w = image.width
+        val h = image.height
+        val pixels = IntArray(w * h)
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                val argb = image.getRGB(x, y)
+                pixels[x + y * w] = if ((argb ushr 24) == 0) 0 else (argb and 0xFFFFFF)
+            }
+        }
+        return pixels
+    }
+
     @FXML
     private fun pack() {
         if (archives.isEmpty()) {
+            return
+        }
+
+        val cache = App.cache ?: return
+        if (cache.format == CacheFormat.MODERN) {
+            packModern(cache)
             return
         }
 
@@ -505,8 +556,26 @@ class Controller : BaseController() {
 
         val encoded = archive.encode()
 
-        val cache = App.cache ?: return
         cache.writeFile(RSFileStore.ARCHIVE_FILE_STORE, RSArchive.MEDIA_ARCHIVE, encoded)
+
+        val alert = Alert(Alert.AlertType.INFORMATION)
+        alert.title = "Info"
+        alert.headerText = "Success!"
+        alert.showAndWait()
+    }
+
+    private fun packModern(cache: CacheSystem) {
+        for (archiveModel in archives) {
+            if (archiveModel.sprites.isEmpty()) continue
+
+            val images = mutableListOf<BufferedImage>()
+            for (spriteModel in archiveModel.sprites) {
+                images.add(spriteModel.sprite.toBufferedImage())
+            }
+
+            val encoded = ModernSpriteCodec.encode(images)
+            cache.writeFile(8, archiveModel.hash, encoded)
+        }
 
         val alert = Alert(Alert.AlertType.INFORMATION)
         alert.title = "Info"
@@ -594,34 +663,10 @@ class Controller : BaseController() {
             ImageIO.write(bimage, "png", File(outputDir, "${spriteModel.id}.png"))
         }
 
-        val alert = Alert(Alert.AlertType.CONFIRMATION)
-        alert.title = "Information"
-        alert.headerText = "Would you like to view these files?"
-        alert.contentText = "Choose an option."
-
-        val choiceOne = ButtonType("Yes.")
-        val close = ButtonType("No", ButtonBar.ButtonData.CANCEL_CLOSE)
-
-        alert.buttonTypes.setAll(choiceOne, close)
-
-        val result = alert.showAndWait()
-
-        if (result.isPresent) {
-
-            val type = result.get()
-
-            if (type == choiceOne) {
-                try {
-                    Desktop.getDesktop().open(outputDir)
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                }
-
-            }
-
-        }
-
-
+        val alert = Alert(Alert.AlertType.INFORMATION)
+        alert.title = "Info"
+        alert.headerText = "Exported ${selectedArchive.sprites.size} sprites to ${outputDir.absolutePath}"
+        alert.showAndWait()
     }
 
     @FXML
@@ -634,36 +679,14 @@ class Controller : BaseController() {
             outputDir.mkdir()
         }
 
+        val file = File(outputDir, "${selectedItem.id}.png")
         val bimage = selectedItem.sprite.toBufferedImage()
+        ImageIO.write(bimage, "png", file)
 
-        ImageIO.write(bimage, "png", File(outputDir, "${selectedItem.id}.png"))
-
-        val alert = Alert(Alert.AlertType.CONFIRMATION)
-        alert.title = "Information"
-        alert.headerText = "Would you like to view this sprite?"
-        alert.contentText = "Choose an option."
-
-        val choiceOne = ButtonType("Yes.")
-        val close = ButtonType("No", ButtonBar.ButtonData.CANCEL_CLOSE)
-
-        alert.buttonTypes.setAll(choiceOne, close)
-
-        val result = alert.showAndWait()
-
-        if (result.isPresent) {
-
-            val type = result.get()
-
-            if (type == choiceOne) {
-                try {
-                    Desktop.getDesktop().open(outputDir)
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                }
-
-            }
-
-        }
+        val alert = Alert(Alert.AlertType.INFORMATION)
+        alert.title = "Info"
+        alert.headerText = "Exported to ${file.absolutePath}"
+        alert.showAndWait()
     }
 
 }

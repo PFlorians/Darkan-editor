@@ -15,7 +15,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
-<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" onMouseClicked="#onMouseClicked" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="475.0" prefWidth="800.0" styleClass="cod-gray" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="darkan.editor.gui.controller.MainController">
+<BorderPane minHeight="350.0" minWidth="500.0" onMouseClicked="#onMouseClicked" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="475.0" prefWidth="800.0" styleClass="cod-gray" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="darkan.editor.gui.controller.MainController">
    <top>
       <VBox BorderPane.alignment="CENTER">
          <children>
@@ -51,7 +51,7 @@
                                     <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                                  </HBox.margin>
                               </Button>
-                              <Button fx:id="maxBtn" minWidth="45.0" mnemonicParsing="false">
+                              <Button fx:id="maxBtn" minWidth="45.0" mnemonicParsing="false" onAction="#maximizeProgram">
                                  <HBox.margin>
                                     <Insets bottom="5.0" right="5.0" top="5.0" />
                                  </HBox.margin>

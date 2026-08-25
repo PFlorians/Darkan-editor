@@ -19,9 +19,9 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
-<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity"
+<BorderPane minHeight="350.0" minWidth="475.0" prefHeight="500.0" prefWidth="700.0"
             onMouseClicked="#onMouseClicked" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed"
-            prefHeight="350.0" prefWidth="475.0" styleClass="cod-gray" xmlns="http://javafx.com/javafx/8.0.111"
+            styleClass="cod-gray" xmlns="http://javafx.com/javafx/8.0.111"
             xmlns:fx="http://javafx.com/fxml/1" fx:controller="darkan.editor.plugin.Controller">
     <center>
         <VBox alignment="CENTER">
@@ -209,7 +209,7 @@
                                                 <Insets left="5.0" right="5.0" top="5.0"/>
                                             </HBox.margin>
                                         </Button>
-                                        <Button fx:id="maxBtn" minWidth="45.0" mnemonicParsing="false">
+                                        <Button fx:id="maxBtn" minWidth="45.0" mnemonicParsing="false" onAction="#maximizeProgram">
                                             <HBox.margin>
                                                 <Insets right="5.0" top="5.0"/>
                                             </HBox.margin>

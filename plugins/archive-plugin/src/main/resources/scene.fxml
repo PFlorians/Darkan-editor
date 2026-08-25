@@ -63,7 +63,7 @@
                                                 <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
                                             </HBox.margin>
                                         </Button>
-                                        <Button fx:id="maxBtn" minWidth="45.0" mnemonicParsing="false">
+                                        <Button fx:id="maxBtn" minWidth="45.0" mnemonicParsing="false" onAction="#maximizeProgram">
                                             <HBox.margin>
                                                 <Insets bottom="5.0" right="5.0" top="5.0"/>
                                             </HBox.margin>

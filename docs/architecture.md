@@ -42,6 +42,17 @@ The factory inspects the cache directory for `main_file_cache.dat2` (modern) or 
 
 Graphics classes (`RSSprite`, `RSTexture`, `RSModel`, `RSFont`, `RSRaster`, `RSRasterizer`) provide decoding for visual cache data.
 
+#### fs/codec (Format Codecs)
+
+Wraps external libraries for format-specific decoding and encoding of modern cache data:
+
+- `ModernSpriteCodec` — Decode (RuneLite) and encode (OpenRS2) modern sprites (Index 8)
+- `ModernSpriteFrame` — Data record for a decoded sprite frame
+- `ModernTextureCodec` — Decode and encode modern texture definitions (Index 9)
+- `ModernTextureDef` — Data record for texture metadata
+
+Plugins use these codecs via `BufferedImage` — they never interact with RuneLite or OpenRS2 directly. See [library-integration.md](library-integration.md) for details on the hybrid library approach.
+
 ### gui
 
 The JavaFX 21 application. Key classes:

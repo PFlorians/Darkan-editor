@@ -17,14 +17,15 @@ import javafx.stage.Stage
 import javafx.stage.StageStyle
 import darkan.editor.gui.App
 import darkan.editor.gui.Settings
+import darkan.editor.gui.util.ResizableStageHelper
 import java.io.File
 
 abstract class BaseController : Initializable {
 
     var currentPlugin = Any()
 
-    var xOffset:Double = 0.toDouble()
-    var yOffset:Double = 0.toDouble()
+    var xOffset: Double = 0.0
+    var yOffset: Double = 0.0
 
     @FXML
     private fun onMouseClicked(event: MouseEvent) {
@@ -40,6 +41,13 @@ abstract class BaseController : Initializable {
         currentStage.isIconified = true
     }
 
+    @FXML
+    open fun maximizeProgram(e: ActionEvent) {
+        val node = e.source as Node
+        currentStage = node.scene.window as Stage
+        currentStage.isMaximized = !currentStage.isMaximized
+    }
+
     fun openScene(sceneName: String) {
         val loader = FXMLLoader(App::class.java.getResource("/scenes/$sceneName.fxml"))
         val root = loader.load<Parent>()
@@ -47,11 +55,12 @@ abstract class BaseController : Initializable {
         val stage = Stage()
         val scene = Scene(root)
         stage.scene = scene
-        stage.isResizable = false
+        stage.isResizable = true
         stage.initStyle(StageStyle.UNDECORATED)
         stage.scene.stylesheets.add(App::class.java.getResource("/style.css").toExternalForm())
         stage.icons.add(Image(App::class.java.getResourceAsStream("/icons/icon.png")))
         stage.show()
+        ResizableStageHelper.install(stage)
         sceneCount++
     }
 
@@ -65,7 +74,7 @@ abstract class BaseController : Initializable {
         val stage = Stage()
         val scene = Scene(root)
         stage.scene = scene
-        stage.isResizable = false
+        stage.isResizable = true
         stage.initStyle(StageStyle.UNDECORATED)
         stage.scene.stylesheets.add(App::class.java.getResource("/style.css").toExternalForm())
         stage.icons.add(Image(App::class.java.getResourceAsStream("/icons/icon.png")))
@@ -78,6 +87,7 @@ abstract class BaseController : Initializable {
         currentStage.icons.addAll(stage.icons)
         currentStage.scene = stage.scene
         currentStage.centerOnScreen()
+        ResizableStageHelper.install(currentStage)
     }
 
     protected fun runTask(title: String, task: Task<*>) {
@@ -167,14 +177,21 @@ abstract class BaseController : Initializable {
 
     @FXML
     open fun handleMouseDragged(event: MouseEvent) {
+        if (currentStage.isMaximized) return
         currentStage.x = event.screenX - xOffset
         currentStage.y = event.screenY - yOffset
     }
+
     @FXML
-    open fun handleMousePressed(event:MouseEvent) {
+    open fun handleMousePressed(event: MouseEvent) {
         currentStage = (event.target as Node).scene.window as Stage
         xOffset = event.sceneX
         yOffset = event.sceneY
+    }
+
+    @FXML
+    open fun handleMouseMoved(event: MouseEvent) {
+        // Handled by ResizableStageHelper at the scene level
     }
 
     @FXML

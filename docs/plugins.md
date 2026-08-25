@@ -47,21 +47,38 @@ Each plugin is a self-contained Gradle subproject under `plugins/`. At build tim
 
 ## Sprite Plugin
 
-**Purpose:** View sprites from the legacy 317 cache format.
+**Purpose:** View, export, import, and replace sprites in both legacy and modern caches.
 
-**Cache location:** Legacy archive file store
+**Cache location:**
+- Legacy: Media archive (file store 0, archive 4)
+- Modern: Index 8 (one archive per sprite group, files are frames)
 
-**Capabilities:** Renders sprites as images with scaling support via imgscalr. Read-only.
+**Capabilities:**
+- Browse sprite archives/groups
+- View individual sprites and frames
+- Export single sprites or entire archives to PNG
+- Import new sprites from PNG files
+- Replace existing sprites with new images
+- Pack changes back to cache (both legacy and modern)
+
+**Encoding:** Uses OpenRS2 sprite encoder for modern format (palette optimization, alpha support). Legacy uses the built-in encoder.
 
 ## Texture Plugin
 
-**Purpose:** View textures from the cache.
+**Purpose:** View, export, and replace textures in both legacy and modern caches.
 
-**Cache location:** Legacy format only (texture archive)
+**Cache location:**
+- Legacy: Texture archive (file store 0, archive 6)
+- Modern: Index 9 (archive 0, each file is a texture definition referencing a sprite in Index 8)
 
-**Capabilities:** Renders textures as viewable images. Read-only.
+**Capabilities:**
+- Browse all textures
+- View textures (modern: resolves sprite reference from Index 8)
+- Export textures to PNG
+- Replace texture sprites with new PNG images
+- Pack changes back to cache (legacy)
 
-**Limitations:** Does not currently work with modern cache textures. Modern caches store textures differently (Index 9) and would need a separate decoder.
+**Notes:** Modern textures are metadata pointing to sprites. Replacing a texture replaces its underlying sprite in Index 8.
 
 ## Model Viewer Plugin
 
